@@ -369,6 +369,43 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // 12. Mobile Menu Toggle
+    const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+    const navLinks = document.querySelector('.nav-links');
+
+    if (mobileMenuBtn && navLinks) {
+        mobileMenuBtn.addEventListener('click', () => {
+            navLinks.classList.toggle('active');
+            const isActive = navLinks.classList.contains('active');
+            
+            // Re-select icons as Lucide might have replaced them
+            const currentMenuIcon = mobileMenuBtn.querySelector('.menu-icon');
+            const currentCloseIcon = mobileMenuBtn.querySelector('.close-icon');
+            
+            if (isActive) {
+                if (currentMenuIcon) currentMenuIcon.style.display = 'none';
+                if (currentCloseIcon) currentCloseIcon.style.display = 'block';
+                document.body.style.overflow = 'hidden';
+            } else {
+                if (currentMenuIcon) currentMenuIcon.style.display = 'block';
+                if (currentCloseIcon) currentCloseIcon.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        });
+
+        // Close menu when clicking a link
+        document.querySelectorAll('.nav-links a').forEach(link => {
+            link.addEventListener('click', () => {
+                navLinks.classList.remove('active');
+                const currentMenuIcon = mobileMenuBtn.querySelector('.menu-icon');
+                const currentCloseIcon = mobileMenuBtn.querySelector('.close-icon');
+                if (currentMenuIcon) currentMenuIcon.style.display = 'block';
+                if (currentCloseIcon) currentCloseIcon.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            });
+        });
+    }
+
     // Start everything
     lucide.createIcons();
     updateLanguage(currentLang);
