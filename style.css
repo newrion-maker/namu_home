@@ -698,19 +698,18 @@ h2 {
 @media (max-width: 768px) {
     .gallery-tabs {
         flex-wrap: nowrap;
-        justify-content: flex-start;
-        overflow-x: auto;
-        padding-bottom: 1rem;
-        -webkit-overflow-scrolling: touch;
-        scroll-snap-type: x mandatory;
-    }
-    .gallery-tabs::-webkit-scrollbar {
-        display: none;
+        justify-content: space-between;
+        gap: 0.25rem;
+        width: 100%;
+        margin-bottom: 2rem;
     }
     .tab-btn {
-        white-space: nowrap;
-        scroll-snap-align: start;
-        flex-shrink: 0;
+        padding: 0.5rem 0.2rem;
+        font-size: 0.8rem;
+        flex: 1;
+        text-align: center;
+        min-width: 0;
+        letter-spacing: -0.5px;
     }
 }
 
