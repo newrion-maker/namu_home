@@ -704,14 +704,18 @@ h2 {
         margin-bottom: 2rem;
     }
     .tab-btn {
-        padding: 0.4rem 0.2rem;
-        font-size: clamp(0.65rem, 3vw, 0.8rem);
-        flex: 1 1 auto;
-        text-align: center;
+        padding: 0;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: clamp(0.55rem, 2.8vw, 0.75rem);
+        flex: 1;
         min-width: 0;
         letter-spacing: -0.5px;
         white-space: nowrap;
         overflow: hidden;
+        border-radius: 30px;
     }
 }
 
