@@ -690,16 +690,33 @@ h2 {
 .gallery-tabs {
     display: flex;
     justify-content: center;
-    gap: 1rem;
+    gap: 1.5rem;
     margin-bottom: 4rem;
     flex-wrap: wrap;
+}
+
+.tab-btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 1.1rem;
+    font-weight: 600;
+    transition: var(--transition-fast);
+}
+
+.tab-btn.active, .tab-btn:hover {
+    color: var(--primary);
+    background: transparent;
+    box-shadow: none;
 }
 
 @media (max-width: 768px) {
     .gallery-tabs {
         flex-wrap: nowrap;
         justify-content: space-between;
-        gap: 0.25rem;
+        gap: 0;
         width: 100%;
         margin-bottom: 2rem;
     }
@@ -709,33 +726,13 @@ h2 {
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: clamp(0.55rem, 2.8vw, 0.75rem);
+        font-size: clamp(0.7rem, 3.5vw, 0.95rem);
         flex: 1;
         min-width: 0;
         letter-spacing: -0.5px;
         white-space: nowrap;
-        overflow: hidden;
-        border-radius: 30px;
+        overflow: visible;
     }
-}
-
-.tab-btn {
-    padding: 0.7rem 2rem;
-    border: 1px solid rgba(128, 128, 128, 0.2);
-    background: transparent;
-    color: var(--text-main);
-    border-radius: 50px;
-    cursor: pointer;
-    font-size: 1rem;
-    font-weight: 500;
-    transition: var(--transition-fast);
-}
-
-.tab-btn.active, .tab-btn:hover {
-    background: var(--primary);
-    color: #ffffff;
-    border-color: var(--primary);
-    box-shadow: 0 5px 15px rgba(201, 165, 92, 0.3);
 }
 
 /* Lightbox Modal */
@@ -818,14 +815,40 @@ h2 {
     }
     .contact-info {
         text-align: left;
-        display: block;
-        margin-bottom: 3rem;
-    }
-    .contact-info p {
-        margin-bottom: 1rem;
-        font-size: 0.95rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+        margin-top: 2rem;
     }
 }
+
+.contact-info {
+    margin-top: 2.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.contact-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.contact-item i {
+    color: var(--primary);
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    margin-top: 4px; /* Align icon nicely with the first line of text */
+}
+
+.contact-item span {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.85); /* Slightly muted white */
+    line-height: 1.6;
+}
+
 
 .form-group {
     margin-bottom: 2.5rem;
