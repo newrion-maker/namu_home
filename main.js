@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
             form_msg_placeholder: '상세한 내용을 입력해 주세요',
             form_submit: '문의하기',
             footer_copy: '&copy; 2026 STUDIO NAMU. All rights reserved.',
-            alert_success: '님, 문의가 성공적으로 접수되었습니다. 곧 연락드리겠습니다!'
+            alert_success: '문의가 성공적으로 접수되었습니다. 곧 연락드리겠습니다!'
         },
         en: {
             nav_about: 'About',
@@ -99,7 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
             form_msg_placeholder: 'Please feel free to contact us with any inquiries.',
             form_submit: 'Submit Inquiry',
             footer_copy: '&copy; 2026 STUDIO NAMU. All rights reserved.',
-            alert_success: ', Your inquiry has been submitted. We will contact you soon!'
+            alert_success: 'Your inquiry has been submitted. We will contact you soon!'
         }
     };
 
@@ -290,9 +290,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (bookingForm) {
         bookingForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            const name = document.getElementById('name').value;
             const successMsg = translations[currentLang].alert_success;
-            alert(`${name}${successMsg}`);
+            alert(successMsg);
             bookingForm.reset();
         });
     }
