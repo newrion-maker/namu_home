@@ -2,57 +2,48 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>벽돌깨기 게임</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
-      background: #0f0c29;
       background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
-      min-height: 100vh;
+      min-height: 100dvh;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       font-family: 'Segoe UI', sans-serif;
       color: #fff;
-      /* 모바일: 가로 스크롤 방지, 세로 여백 */
       overflow-x: hidden;
-      padding: 10px 8px;
+      /* 아이폰 노치/홈 바 대응 */
+      padding: 8px 8px max(8px, env(safe-area-inset-bottom));
     }
 
     h1 {
       font-size: clamp(1.2rem, 5vw, 2rem);
-      margin-bottom: 10px;
+      margin-bottom: 8px;
       letter-spacing: 3px;
       text-shadow: 0 0 20px #a78bfa, 0 0 40px #7c3aed;
     }
 
     #scoreboard {
       display: flex;
-      gap: clamp(10px, 4vw, 48px);
-      margin-bottom: 10px;
-      font-size: clamp(0.78rem, 3vw, 1.1rem);
+      gap: clamp(8px, 4vw, 48px);
+      margin-bottom: 8px;
+      font-size: clamp(0.75rem, 3vw, 1.1rem);
       font-weight: 600;
-      flex-wrap: wrap;
-      justify-content: center;
     }
 
     #scoreboard span {
       background: rgba(255,255,255,0.08);
-      padding: 5px 14px;
+      padding: 4px 12px;
       border-radius: 20px;
       border: 1px solid rgba(255,255,255,0.15);
     }
 
-    #scoreboard span b {
-      color: #a78bfa;
-    }
+    #scoreboard span b { color: #a78bfa; }
 
     #gameCanvas {
       border-radius: 12px;
@@ -60,26 +51,103 @@
       box-shadow: 0 0 40px rgba(124,58,237,0.5), 0 0 80px rgba(124,58,237,0.2);
       display: block;
       background: #0d0d1a;
-      /* 핵심: 화면 너비에 맞게 축소, 비율 유지 */
+      /* 화면 너비에 맞게 자동 축소, 비율(600:450) 유지 */
       width: min(600px, calc(100vw - 16px));
       height: auto;
-      /* 터치 스크롤/줌 방지 */
+      /* 캔버스 자체 터치는 스크롤/줌만 막음 */
       touch-action: none;
     }
 
     #message {
-      margin-top: 10px;
-      font-size: clamp(0.78rem, 3vw, 1rem);
+      margin-top: 8px;
+      font-size: clamp(0.75rem, 3vw, 1rem);
       color: #c4b5fd;
-      min-height: 20px;
-      letter-spacing: 1px;
+      min-height: 18px;
       text-align: center;
+      letter-spacing: 1px;
       padding: 0 8px;
+    }
+
+    /* ── 모바일 전용 조작 영역 ──────────────────────────── */
+    #controlZone {
+      width: min(600px, calc(100vw - 16px));
+      height: 90px;
+      margin-top: 10px;
+      border-radius: 18px;
+      border: 1px solid rgba(167,139,250,0.25);
+      background: rgba(255,255,255,0.04);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      /* 드래그 전용: 브라우저 기본 스크롤 방지 */
+      touch-action: none;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      cursor: grab;
+      overflow: hidden;
+    }
+    #controlZone:active { cursor: grabbing; }
+
+    /* 터치 시 물결 하이라이트 */
+    #controlZone::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: radial-gradient(
+        ellipse 60% 80% at var(--ripple-x, 50%) 50%,
+        rgba(167,139,250,0.18) 0%,
+        transparent 70%
+      );
+      opacity: 0;
+      transition: opacity 0.25s;
+      pointer-events: none;
+    }
+    #controlZone.active::before { opacity: 1; }
+
+    /* 드래그 트랙 */
+    #dragTrack {
+      width: calc(100% - 28px);
+      height: 10px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 5px;
+      position: relative;
+    }
+
+    /* 패들 위치를 반영하는 썸 — left% 는 JS로 제어 */
+    #dragThumb {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      /* paddle.w(100)/W(600) = 16.67% */
+      width: 16.67%;
+      height: 10px;
+      border-radius: 5px;
+      background: linear-gradient(90deg, #a78bfa, #7c3aed);
+      box-shadow: 0 0 12px rgba(167,139,250,0.8);
+      left: 0%;
+      will-change: left;
+    }
+
+    #dragHint {
+      font-size: 0.7rem;
+      color: rgba(255,255,255,0.3);
+      letter-spacing: 1px;
+      pointer-events: none;
+      transition: color 0.2s;
+    }
+
+    /* 데스크톱(마우스)에서는 조작 영역 숨김 */
+    @media (hover: hover) and (pointer: fine) {
+      #controlZone { display: none; }
     }
 
     #startBtn {
       margin-top: 10px;
-      padding: 11px 32px;
+      padding: 10px 32px;
       font-size: clamp(0.88rem, 3.5vw, 1rem);
       font-weight: 700;
       letter-spacing: 2px;
@@ -92,15 +160,8 @@
       transition: transform 0.1s, box-shadow 0.2s;
       -webkit-tap-highlight-color: transparent;
     }
-
-    #startBtn:hover {
-      transform: scale(1.05);
-      box-shadow: 0 0 30px rgba(167,139,250,0.8);
-    }
-
-    #startBtn:active {
-      transform: scale(0.97);
-    }
+    #startBtn:hover  { transform: scale(1.05); box-shadow: 0 0 30px rgba(167,139,250,0.8); }
+    #startBtn:active { transform: scale(0.97); }
 
     #controls {
       margin-top: 10px;
@@ -110,8 +171,8 @@
       line-height: 1.7;
     }
 
-    /* 터치 기기(모바일)에서 키보드 안내 숨기기 */
-    @media (pointer: coarse) {
+    /* 터치 기기에서 키보드 안내 숨기기 */
+    @media (hover: none), (pointer: coarse) {
       #controls { display: none; }
     }
 
@@ -135,10 +196,11 @@
       -webkit-tap-highlight-color: transparent;
     }
     #muteBtn:hover { background: rgba(255,255,255,0.18); transform: scale(1.1); }
-    #muteBtn.muted { color: rgba(255,255,255,0.35); }
+    #muteBtn.muted  { color: rgba(255,255,255,0.35); }
   </style>
 </head>
 <body>
+
   <h1>BREAKOUT</h1>
 
   <div id="scoreboard">
@@ -150,30 +212,47 @@
   <canvas id="gameCanvas" width="600" height="450"></canvas>
 
   <div id="message">버튼을 눌러 시작하세요!</div>
-  <button id="startBtn">게임 시작</button>
-  <div id="controls">
-    좌우 방향키 또는 마우스로 패들 이동 &nbsp;|&nbsp; 스페이스바로 시작/일시정지
+
+  <!-- 모바일 전용 드래그 조작 영역 -->
+  <div id="controlZone">
+    <div id="dragTrack"><div id="dragThumb"></div></div>
+    <p id="dragHint">← 좌우로 드래그하여 패들 조작 →</p>
   </div>
+
+  <button id="startBtn">게임 시작</button>
+
+  <div id="controls">
+    ← → 방향키 또는 마우스로 패들 이동 &nbsp;|&nbsp; 스페이스바로 시작/일시정지
+  </div>
+
   <button id="muteBtn" title="음소거 토글">🔊</button>
 
   <script>
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    const scoreEl = document.getElementById('scoreVal');
-    const levelEl = document.getElementById('levelVal');
-    const livesEl = document.getElementById('livesVal');
-    const messageEl = document.getElementById('message');
-    const startBtn = document.getElementById('startBtn');
-    const muteBtn = document.getElementById('muteBtn');
+    /* ════════════════════════════════════════════════════
+       요소 참조
+    ════════════════════════════════════════════════════ */
+    const canvas      = document.getElementById('gameCanvas');
+    const ctx         = canvas.getContext('2d');
+    const scoreEl     = document.getElementById('scoreVal');
+    const levelEl     = document.getElementById('levelVal');
+    const livesEl     = document.getElementById('livesVal');
+    const messageEl   = document.getElementById('message');
+    const startBtn    = document.getElementById('startBtn');
+    const muteBtn     = document.getElementById('muteBtn');
+    const controlZone = document.getElementById('controlZone');
+    const dragThumb   = document.getElementById('dragThumb');
+    const dragHint    = document.getElementById('dragHint');
 
-    const W = canvas.width;
-    const H = canvas.height;
+    // 게임 내부 좌표계 (CSS 스케일과 무관하게 고정)
+    const W = canvas.width;   // 600
+    const H = canvas.height;  // 450
 
-    // ── Web Audio API 효과음 ───────────────────────────────
+    /* ════════════════════════════════════════════════════
+       Web Audio API 효과음
+    ════════════════════════════════════════════════════ */
     let audioCtx = null;
     let muted = false;
 
-    // 브라우저 정책: 첫 사용자 인터랙션 때 AudioContext 생성
     function getAudioCtx() {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -186,114 +265,81 @@
       muteBtn.classList.toggle('muted', muted);
     });
 
-    // 공통 헬퍼: oscillator 기반 사운드
     function playTone({ type = 'sine', freq, freqEnd, duration, gainPeak = 0.35, startTime }) {
       if (muted) return;
       const ac = getAudioCtx();
-      const t = startTime ?? ac.currentTime;
-      const osc = ac.createOscillator();
+      const t  = startTime ?? ac.currentTime;
+      const osc  = ac.createOscillator();
       const gain = ac.createGain();
       osc.type = type;
       osc.frequency.setValueAtTime(freq, t);
       if (freqEnd != null) osc.frequency.exponentialRampToValueAtTime(freqEnd, t + duration);
       gain.gain.setValueAtTime(gainPeak, t);
       gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
-      osc.connect(gain);
-      gain.connect(ac.destination);
-      osc.start(t);
-      osc.stop(t + duration);
+      osc.connect(gain); gain.connect(ac.destination);
+      osc.start(t); osc.stop(t + duration);
     }
 
-    // 공통 헬퍼: 화이트 노이즈 버스트
     function playNoise({ duration, gainPeak = 0.3, filterFreq = 1000, startTime }) {
       if (muted) return;
       const ac = getAudioCtx();
-      const t = startTime ?? ac.currentTime;
+      const t  = startTime ?? ac.currentTime;
       const samples = Math.ceil(ac.sampleRate * duration);
-      const buffer = ac.createBuffer(1, samples, ac.sampleRate);
-      const data = buffer.getChannelData(0);
+      const buffer  = ac.createBuffer(1, samples, ac.sampleRate);
+      const data    = buffer.getChannelData(0);
       for (let i = 0; i < samples; i++) data[i] = Math.random() * 2 - 1;
-      const src = ac.createBufferSource();
-      src.buffer = buffer;
+      const src    = ac.createBufferSource();
       const filter = ac.createBiquadFilter();
-      filter.type = 'bandpass';
-      filter.frequency.value = filterFreq;
-      filter.Q.value = 1.5;
-      const gain = ac.createGain();
+      const gain   = ac.createGain();
+      src.buffer = buffer;
+      filter.type = 'bandpass'; filter.frequency.value = filterFreq; filter.Q.value = 1.5;
       gain.gain.setValueAtTime(gainPeak, t);
       gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
-      src.connect(filter);
-      filter.connect(gain);
-      gain.connect(ac.destination);
-      src.start(t);
-      src.stop(t + duration);
+      src.connect(filter); filter.connect(gain); gain.connect(ac.destination);
+      src.start(t); src.stop(t + duration);
     }
 
-    // 패들에 공이 맞을 때 — 맑고 짧은 "틱"
-    function sfxPaddle() {
-      playTone({ type: 'sine', freq: 320, freqEnd: 220, duration: 0.09, gainPeak: 0.28 });
-    }
-
-    // 벽돌 데미지 (HP 소모, 미파괴) — 둔탁한 짧은 히트
-    function sfxBrickHit() {
-      playTone({ type: 'square', freq: 480, freqEnd: 380, duration: 0.06, gainPeak: 0.12 });
-    }
-
-    // 벽돌 파괴 — 노이즈 + 피치업 조합
+    function sfxPaddle()     { playTone({ type:'sine',     freq:320, freqEnd:220, duration:0.09, gainPeak:0.28 }); }
+    function sfxBrickHit()   { playTone({ type:'square',   freq:480, freqEnd:380, duration:0.06, gainPeak:0.12 }); }
     function sfxBrickBreak() {
-      playNoise({ duration: 0.14, gainPeak: 0.35, filterFreq: 900 });
-      playTone({ type: 'triangle', freq: 600, freqEnd: 1100, duration: 0.12, gainPeak: 0.2 });
+      playNoise({ duration:0.14, gainPeak:0.35, filterFreq:900 });
+      playTone({ type:'triangle', freq:600, freqEnd:1100, duration:0.12, gainPeak:0.2 });
     }
-
-    // 목숨 잃을 때 — 하강하는 슬픈 음
     function sfxLifeLost() {
-      playTone({ type: 'sawtooth', freq: 440, freqEnd: 110, duration: 0.55, gainPeak: 0.35 });
-      playNoise({ duration: 0.3, gainPeak: 0.15, filterFreq: 300 });
+      playTone({ type:'sawtooth', freq:440, freqEnd:110, duration:0.55, gainPeak:0.35 });
+      playNoise({ duration:0.3, gainPeak:0.15, filterFreq:300 });
     }
-
-    // 게임 오버 — 더 극적인 하강
     function sfxGameOver() {
-      const ac = getAudioCtx();
       if (muted) return;
-      const drops = [
-        { freq: 330, freqEnd: 220, t: 0 },
-        { freq: 220, freqEnd: 147, t: 0.22 },
-        { freq: 147, freqEnd: 90,  t: 0.44 },
-      ];
-      drops.forEach(({ freq, freqEnd, t }) => {
-        playTone({ type: 'sawtooth', freq, freqEnd, duration: 0.28, gainPeak: 0.3,
-          startTime: ac.currentTime + t });
-      });
+      const ac = getAudioCtx();
+      [{ freq:330, freqEnd:220, t:0 }, { freq:220, freqEnd:147, t:0.22 }, { freq:147, freqEnd:90, t:0.44 }]
+        .forEach(({ freq, freqEnd, t }) =>
+          playTone({ type:'sawtooth', freq, freqEnd, duration:0.28, gainPeak:0.3, startTime: ac.currentTime + t }));
     }
-
-    // 레벨 클리어 — 상승하는 아르페지오 팡파르
     function sfxLevelClear() {
       if (muted) return;
       const ac = getAudioCtx();
-      // C5  E5   G5   C6   E6   G6
-      const notes = [523, 659, 784, 1047, 1319, 1568];
-      notes.forEach((freq, i) => {
+      [523, 659, 784, 1047, 1319, 1568].forEach((freq, i) => {
         const t = ac.currentTime + i * 0.11;
-        playTone({ type: 'triangle', freq, duration: 0.25, gainPeak: 0.28, startTime: t });
-        // 약간 딜레이된 사인 레이어로 두께감 추가
-        playTone({ type: 'sine', freq: freq * 0.5, duration: 0.3, gainPeak: 0.12, startTime: t });
+        playTone({ type:'triangle', freq, duration:0.25, gainPeak:0.28, startTime:t });
+        playTone({ type:'sine', freq:freq*0.5, duration:0.3, gainPeak:0.12, startTime:t });
       });
-      // 마지막에 노이즈 스파크
-      playNoise({ duration: 0.25, gainPeak: 0.18, filterFreq: 2000,
-        startTime: ac.currentTime + notes.length * 0.11 });
+      playNoise({ duration:0.25, gainPeak:0.18, filterFreq:2000, startTime: ac.currentTime + 6*0.11 });
     }
 
-    // ── 게임 상태 ──────────────────────────────────────────
-    let score = 0;
-    let lives = 3;
-    let level = 1;
+    /* ════════════════════════════════════════════════════
+       게임 상태
+    ════════════════════════════════════════════════════ */
+    let score = 0, lives = 3, level = 1;
     let gameState = 'idle'; // idle | playing | paused | gameover | cleared
-    let accelTimer = 0;          // 가속 타이머 (프레임 단위)
-    const ACCEL_INTERVAL = 540;  // 약 9초(60fps 기준)마다 가속
-    const ACCEL_AMOUNT  = 0.35;  // 1회 가속량 (px/frame)
-    const SPEED_MAX     = 14;    // 절대 최고 속도 상한
+    let accelTimer = 0;
+    const ACCEL_INTERVAL = 540;   // ~9초(60fps)마다 가속
+    const ACCEL_AMOUNT   = 0.35;
+    const SPEED_MAX      = 14;
 
-    // ── 패들 ──────────────────────────────────────────────
+    /* ════════════════════════════════════════════════════
+       패들
+    ════════════════════════════════════════════════════ */
     const paddle = {
       w: 100, h: 12, speed: 7,
       x: 0, y: H - 30,
@@ -301,16 +347,13 @@
     };
     paddle.x = (W - paddle.w) / 2;
 
-    // ── 공 ────────────────────────────────────────────────
-    const ball = {
-      r: 8, x: 0, y: 0, vx: 0, vy: 0,
-      attached: true
-    };
+    /* ════════════════════════════════════════════════════
+       공
+    ════════════════════════════════════════════════════ */
+    const ball = { r: 8, x: 0, y: 0, vx: 0, vy: 0, attached: true };
 
-    // 레벨별 최소(초기) 속도
     function baseSpeed() { return 4 + level * 0.4; }
 
-    // launchSpeed 생략 시 해당 레벨 기본 속도로 발사
     function resetBall(launchSpeed) {
       ball.x = paddle.cx;
       ball.y = paddle.y - ball.r - 1;
@@ -321,167 +364,197 @@
       ball.attached = true;
     }
 
-    // ── 벽돌 ──────────────────────────────────────────────
-    const BRICK_COLS = 10;
-    const BRICK_ROWS = 5;
-    const BRICK_W = 52;
-    const BRICK_H = 18;
-    const BRICK_PAD = 5;
-    const BRICK_TOP = 50;
+    /* ════════════════════════════════════════════════════
+       벽돌
+    ════════════════════════════════════════════════════ */
+    const BRICK_COLS = 10, BRICK_ROWS = 5;
+    const BRICK_W = 52, BRICK_H = 18, BRICK_PAD = 5, BRICK_TOP = 50;
     const BRICK_LEFT = (W - (BRICK_COLS * (BRICK_W + BRICK_PAD) - BRICK_PAD)) / 2;
-
     const ROW_COLORS = [
-      ['#ff6b6b', '#ff4757'],
-      ['#ffa502', '#ff7f50'],
-      ['#ffdd57', '#ffd32a'],
-      ['#2ed573', '#1e90ff'],
-      ['#70a1ff', '#a29bfe'],
+      ['#ff6b6b','#ff4757'], ['#ffa502','#ff7f50'], ['#ffdd57','#ffd32a'],
+      ['#2ed573','#1e90ff'], ['#70a1ff','#a29bfe'],
     ];
-
     let bricks = [];
 
     function buildBricks() {
       bricks = [];
-      for (let r = 0; r < BRICK_ROWS; r++) {
+      for (let r = 0; r < BRICK_ROWS; r++)
         for (let c = 0; c < BRICK_COLS; c++) {
-          const hp = BRICK_ROWS - r; // top rows are harder (more HP)
+          const hp = BRICK_ROWS - r;
           bricks.push({
             x: BRICK_LEFT + c * (BRICK_W + BRICK_PAD),
-            y: BRICK_TOP + r * (BRICK_H + BRICK_PAD),
-            w: BRICK_W, h: BRICK_H,
-            hp, maxHp: hp,
-            color: ROW_COLORS[r][0],
-            darkColor: ROW_COLORS[r][1],
-            alive: true
+            y: BRICK_TOP  + r * (BRICK_H + BRICK_PAD),
+            w: BRICK_W, h: BRICK_H, hp, maxHp: hp,
+            color: ROW_COLORS[r][0], darkColor: ROW_COLORS[r][1], alive: true,
           });
         }
-      }
     }
 
-    // ── 파티클 ────────────────────────────────────────────
+    /* ════════════════════════════════════════════════════
+       파티클
+    ════════════════════════════════════════════════════ */
     let particles = [];
 
     function spawnParticles(x, y, color) {
       for (let i = 0; i < 10; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const speed = 1 + Math.random() * 3;
-        particles.push({
-          x, y,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          alpha: 1,
-          r: 2 + Math.random() * 3,
-          color
-        });
+        const a = Math.random() * Math.PI * 2, s = 1 + Math.random() * 3;
+        particles.push({ x, y, vx: Math.cos(a)*s, vy: Math.sin(a)*s, alpha: 1, r: 2+Math.random()*3, color });
       }
     }
 
-    // ── 키 입력 ───────────────────────────────────────────
+    /* ════════════════════════════════════════════════════
+       키보드 입력
+    ════════════════════════════════════════════════════ */
     const keys = {};
     document.addEventListener('keydown', e => {
       keys[e.code] = true;
-      if (e.code === 'Space') {
-        e.preventDefault();
-        if (gameState === 'idle' || gameState === 'gameover' || gameState === 'cleared') {
-          startGame();
-        } else if (gameState === 'playing') {
-          if (ball.attached) {
-            ball.attached = false;
-          } else {
-            gameState = 'paused';
-            messageEl.textContent = '일시정지 — 스페이스바로 재개';
-          }
-        } else if (gameState === 'paused') {
-          gameState = 'playing';
-          messageEl.textContent = '';
-          requestAnimationFrame(loop);
-        }
+      if (e.code !== 'Space') return;
+      e.preventDefault();
+      if      (gameState === 'idle' || gameState === 'gameover') startGame();
+      else if (gameState === 'cleared')  { doNextLevel(); }
+      else if (gameState === 'playing')  {
+        if (ball.attached) ball.attached = false;
+        else { gameState = 'paused'; messageEl.textContent = '일시정지 — 스페이스바로 재개'; }
       }
+      else if (gameState === 'paused')   { resumeGame(); }
     });
     document.addEventListener('keyup', e => { keys[e.code] = false; });
 
-    // CSS 스케일 보정 계수 (캔버스 내부 해상도 ÷ 화면 표시 크기)
-    function canvasScaleX() {
+    /* ════════════════════════════════════════════════════
+       CSS 스케일 보정 — 캔버스가 CSS로 축소될 때 좌표 변환
+    ════════════════════════════════════════════════════ */
+    function canvasScale() {
       return canvas.width / canvas.getBoundingClientRect().width;
     }
 
-    // 마우스로 패들 이동
+    /* ════════════════════════════════════════════════════
+       마우스 (데스크톱)
+    ════════════════════════════════════════════════════ */
     canvas.addEventListener('mousemove', e => {
       const rect = canvas.getBoundingClientRect();
-      const mx = (e.clientX - rect.left) * canvasScaleX();
-      paddle.x = mx - paddle.w / 2;
+      paddle.x = (e.clientX - rect.left) * canvasScale() - paddle.w / 2;
       clampPaddle();
     });
 
-    // 터치: 패들 이동
-    canvas.addEventListener('touchmove', e => {
-      e.preventDefault();
-      const rect = canvas.getBoundingClientRect();
-      const tx = (e.touches[0].clientX - rect.left) * canvasScaleX();
-      paddle.x = tx - paddle.w / 2;
-      clampPaddle();
-    }, { passive: false });
-
-    // 터치: 탭으로 공 발사 / 게임 시작
-    canvas.addEventListener('touchstart', e => {
-      e.preventDefault();
-      if (gameState === 'idle' || gameState === 'gameover') {
-        startGame();
-      } else if (gameState === 'cleared') {
-        nextLevelBtn();
-        startBtn.textContent = '공 발사';
-      } else if (gameState === 'playing' && ball.attached) {
-        ball.attached = false;
-      } else if (gameState === 'paused') {
-        gameState = 'playing';
-        messageEl.textContent = '';
-        requestAnimationFrame(loop);
-      }
-    }, { passive: false });
+    /* ════════════════════════════════════════════════════
+       캔버스 터치 — 패들 조작 없음, 스크롤/줌만 차단
+    ════════════════════════════════════════════════════ */
+    canvas.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
+    canvas.addEventListener('touchmove',  e => e.preventDefault(), { passive: false });
 
     function clampPaddle() {
-      if (paddle.x < 0) paddle.x = 0;
-      if (paddle.x + paddle.w > W) paddle.x = W - paddle.w;
+      paddle.x = Math.max(0, Math.min(W - paddle.w, paddle.x));
     }
 
-    startBtn.addEventListener('click', () => {
-      if (gameState === 'playing') {
-        if (ball.attached) ball.attached = false;
+    /* ════════════════════════════════════════════════════
+       조작 영역 드래그 (모바일 전용)
+    ════════════════════════════════════════════════════ */
+    let dragPrevX  = 0;
+    let dragMoved  = false;
+
+    // 썸(thumb) 위치를 패들에 맞게 갱신
+    function syncDragThumb() {
+      dragThumb.style.left = ((paddle.x / W) * 100).toFixed(2) + '%';
+      if (gameState === 'playing' && ball.attached) {
+        dragHint.textContent   = '탭하여 발사!';
+        dragHint.style.color   = 'rgba(167,139,250,0.8)';
       } else {
-        startGame();
+        dragHint.textContent   = '← 좌우로 드래그하여 패들 조작 →';
+        dragHint.style.color   = 'rgba(255,255,255,0.3)';
       }
+    }
+
+    controlZone.addEventListener('touchstart', e => {
+      e.preventDefault();
+      dragPrevX = e.touches[0].clientX;
+      dragMoved = false;
+      // 물결 효과 위치 설정
+      const rect = controlZone.getBoundingClientRect();
+      const pct  = ((e.touches[0].clientX - rect.left) / rect.width * 100).toFixed(1) + '%';
+      controlZone.style.setProperty('--ripple-x', pct);
+      controlZone.classList.add('active');
+    }, { passive: false });
+
+    controlZone.addEventListener('touchmove', e => {
+      e.preventDefault();
+      const dx = e.touches[0].clientX - dragPrevX;
+      dragPrevX = e.touches[0].clientX;
+      if (Math.abs(dx) > 2) dragMoved = true;
+
+      // 조작 영역 표시 너비 → 캔버스 내부 좌표로 변환
+      const zoneW = controlZone.getBoundingClientRect().width;
+      paddle.x += dx * (W / zoneW);
+      clampPaddle();
+      syncDragThumb();
+    }, { passive: false });
+
+    controlZone.addEventListener('touchend', () => {
+      controlZone.classList.remove('active');
+      if (!dragMoved) onZoneTap();   // 이동 없이 손 뗌 = 탭
+      dragMoved = false;
+    }, { passive: false });
+
+    // 조작 영역 탭 동작
+    function onZoneTap() {
+      if      (gameState === 'idle' || gameState === 'gameover') startGame();
+      else if (gameState === 'cleared')                          doNextLevel();
+      else if (gameState === 'playing' && ball.attached)         ball.attached = false;
+      else if (gameState === 'paused')                           resumeGame();
+    }
+
+    /* ════════════════════════════════════════════════════
+       버튼
+    ════════════════════════════════════════════════════ */
+    startBtn.addEventListener('click', () => {
+      if      (gameState === 'cleared')                  doNextLevel();
+      else if (gameState === 'playing' && ball.attached) ball.attached = false;
+      else if (gameState !== 'playing')                  startGame();
     });
 
-    // ── 게임 시작 / 초기화 ────────────────────────────────
+    /* ════════════════════════════════════════════════════
+       터치 여부 감지
+    ════════════════════════════════════════════════════ */
     const isTouch = () => window.matchMedia('(pointer: coarse)').matches;
 
+    function launchMsg() {
+      return isTouch() ? '조작 영역을 탭하여 발사!' : '스페이스바 또는 클릭으로 발사!';
+    }
+
+    /* ════════════════════════════════════════════════════
+       게임 흐름
+    ════════════════════════════════════════════════════ */
     function startGame() {
-      score = 0;
-      lives = 3;
-      level = 1;
-      accelTimer = 0;
+      score = 0; lives = 3; level = 1; accelTimer = 0;
       particles = [];
       updateHUD();
       buildBricks();
       paddle.x = (W - paddle.w) / 2;
       resetBall();
       gameState = 'playing';
-      messageEl.textContent = isTouch()
-        ? '화면을 탭해서 공을 발사!'
-        : '스페이스바 또는 클릭으로 공을 발사!';
-      startBtn.textContent = '공 발사';
+      messageEl.textContent = launchMsg();
+      startBtn.textContent  = '공 발사';
+      syncDragThumb();
       requestAnimationFrame(loop);
     }
 
-    function nextLevel() {
-      level++;
-      accelTimer = 0;
+    function doNextLevel() {
+      level++; accelTimer = 0;
       levelEl.textContent = level;
       buildBricks();
       paddle.x = (W - paddle.w) / 2;
       resetBall();
       gameState = 'playing';
-      messageEl.textContent = `레벨 ${level} 시작! 스페이스바로 발사`;
+      messageEl.textContent = isTouch()
+        ? `레벨 ${level} 시작! 탭하여 발사`
+        : `레벨 ${level} 시작! 스페이스바로 발사`;
+      startBtn.textContent = '공 발사';
+      syncDragThumb();
+      requestAnimationFrame(loop);
+    }
+
+    function resumeGame() {
+      gameState = 'playing';
+      messageEl.textContent = '';
       requestAnimationFrame(loop);
     }
 
@@ -491,81 +564,59 @@
       livesEl.textContent = lives;
     }
 
-    // ── 충돌 감지 (AABB + 공) ─────────────────────────────
+    /* ════════════════════════════════════════════════════
+       충돌
+    ════════════════════════════════════════════════════ */
     function circleRect(cx, cy, r, rx, ry, rw, rh) {
-      const nearX = Math.max(rx, Math.min(cx, rx + rw));
-      const nearY = Math.max(ry, Math.min(cy, ry + rh));
-      const dx = cx - nearX;
-      const dy = cy - nearY;
-      return dx * dx + dy * dy <= r * r;
+      const nx = Math.max(rx, Math.min(cx, rx + rw));
+      const ny = Math.max(ry, Math.min(cy, ry + rh));
+      const dx = cx - nx, dy = cy - ny;
+      return dx*dx + dy*dy <= r*r;
     }
 
     function resolveRectBounce(cx, cy, r, rx, ry, rw, rh) {
-      // 어느 면에 부딪혔는지 판단
-      const overlapL = (cx + r) - rx;
-      const overlapR = (rx + rw) - (cx - r);
-      const overlapT = (cy + r) - ry;
-      const overlapB = (ry + rh) - (cy - r);
-      const minH = Math.min(overlapL, overlapR);
-      const minV = Math.min(overlapT, overlapB);
-      if (minH < minV) {
-        ball.vx *= -1;
-      } else {
-        ball.vy *= -1;
-      }
+      const minH = Math.min((cx+r)-rx, (rx+rw)-(cx-r));
+      const minV = Math.min((cy+r)-ry, (ry+rh)-(cy-r));
+      if (minH < minV) ball.vx *= -1; else ball.vy *= -1;
     }
 
-    // ── 메인 루프 ─────────────────────────────────────────
-    let lastTime = 0;
-
-    function loop(ts) {
+    /* ════════════════════════════════════════════════════
+       메인 루프
+    ════════════════════════════════════════════════════ */
+    function loop() {
       if (gameState !== 'playing') return;
 
-      // 패들 키보드 이동
-      if (keys['ArrowLeft'] || keys['KeyA']) {
-        paddle.x -= paddle.speed;
-        clampPaddle();
-      }
-      if (keys['ArrowRight'] || keys['KeyD']) {
-        paddle.x += paddle.speed;
-        clampPaddle();
-      }
+      // 키보드 패들
+      if (keys['ArrowLeft'] || keys['KeyA'])  { paddle.x -= paddle.speed; clampPaddle(); }
+      if (keys['ArrowRight'] || keys['KeyD']) { paddle.x += paddle.speed; clampPaddle(); }
 
-      // 공이 패들에 붙어 있으면 따라다님
       if (ball.attached) {
         ball.x = paddle.cx;
         ball.y = paddle.y - ball.r - 1;
       } else {
-        // 공 이동
         ball.x += ball.vx;
         ball.y += ball.vy;
 
         // 벽 반사
-        if (ball.x - ball.r <= 0) { ball.x = ball.r; ball.vx = Math.abs(ball.vx); }
-        if (ball.x + ball.r >= W) { ball.x = W - ball.r; ball.vx = -Math.abs(ball.vx); }
-        if (ball.y - ball.r <= 0) { ball.y = ball.r; ball.vy = Math.abs(ball.vy); }
+        if (ball.x - ball.r <= 0) { ball.x = ball.r;   ball.vx =  Math.abs(ball.vx); }
+        if (ball.x + ball.r >= W) { ball.x = W-ball.r; ball.vx = -Math.abs(ball.vx); }
+        if (ball.y - ball.r <= 0) { ball.y = ball.r;   ball.vy =  Math.abs(ball.vy); }
 
         // 패들 충돌
-        if (
-          ball.vy > 0 &&
-          ball.y + ball.r >= paddle.y &&
-          ball.y - ball.r <= paddle.y + paddle.h &&
-          ball.x >= paddle.x - ball.r &&
-          ball.x <= paddle.x + paddle.w + ball.r
-        ) {
+        if (ball.vy > 0 &&
+            ball.y + ball.r >= paddle.y && ball.y - ball.r <= paddle.y + paddle.h &&
+            ball.x >= paddle.x - ball.r && ball.x <= paddle.x + paddle.w + ball.r) {
           ball.y = paddle.y - ball.r;
-          // 패들 위 위치에 따라 반사 각도 조절
-          const hitPos = (ball.x - paddle.cx) / (paddle.w / 2); // -1 ~ 1
-          const angle = hitPos * (Math.PI / 3); // 최대 ±60°
-          const speed = Math.hypot(ball.vx, ball.vy);
+          const hitPos = (ball.x - paddle.cx) / (paddle.w / 2);
+          const angle  = hitPos * (Math.PI / 3);
+          const speed  = Math.hypot(ball.vx, ball.vy);
           ball.vx = Math.sin(angle) * speed;
           ball.vy = -Math.abs(Math.cos(angle) * speed);
           sfxPaddle();
         }
 
-        // 공이 바닥 아래로 떨어짐
+        // 낙사
         if (ball.y - ball.r > H) {
-          // 사망 직전 속도 기록 → 50% 감속, 단 레벨 최소 속도 이상 유지
           const deathSpeed = Math.hypot(ball.vx, ball.vy);
           const nextSpeed  = Math.max(baseSpeed(), deathSpeed * 0.5);
           lives--;
@@ -575,14 +626,14 @@
             sfxGameOver();
             drawFrame();
             messageEl.textContent = `게임 오버! 최종 점수: ${score}`;
-            startBtn.textContent = '다시 시작';
+            startBtn.textContent  = '다시 시작';
             return;
           }
           accelTimer = 0;
           sfxLifeLost();
           resetBall(nextSpeed);
           messageEl.textContent = isTouch()
-            ? '목숨 -1! 화면을 탭해서 다시 발사'
+            ? '목숨 -1! 탭하여 다시 발사'
             : '목숨 -1! 스페이스바로 다시 발사';
         }
 
@@ -590,199 +641,145 @@
         let brickHit = false;
         for (const b of bricks) {
           if (!b.alive) continue;
-          if (circleRect(ball.x, ball.y, ball.r, b.x, b.y, b.w, b.h)) {
-            if (!brickHit) {
-              resolveRectBounce(ball.x, ball.y, ball.r, b.x, b.y, b.w, b.h);
-              brickHit = true;
-            }
-            b.hp--;
-            spawnParticles(b.x + b.w / 2, b.y + b.h / 2, b.color);
-            if (b.hp <= 0) {
-              b.alive = false;
-              score += b.maxHp * 10 * level;
-              scoreEl.textContent = score;
-              sfxBrickBreak();
-            } else {
-              sfxBrickHit();
-            }
+          if (!circleRect(ball.x, ball.y, ball.r, b.x, b.y, b.w, b.h)) continue;
+          if (!brickHit) { resolveRectBounce(ball.x, ball.y, ball.r, b.x, b.y, b.w, b.h); brickHit = true; }
+          b.hp--;
+          spawnParticles(b.x + b.w/2, b.y + b.h/2, b.color);
+          if (b.hp <= 0) {
+            b.alive = false;
+            score += b.maxHp * 10 * level;
+            scoreEl.textContent = score;
+            sfxBrickBreak();
+          } else {
+            sfxBrickHit();
           }
         }
 
-        // 시간 기반 가속: 일정 프레임마다 속도 증가
+        // 시간 기반 가속
         accelTimer++;
         if (accelTimer >= ACCEL_INTERVAL) {
           accelTimer = 0;
-          const curSpeed = Math.hypot(ball.vx, ball.vy);
-          if (curSpeed < SPEED_MAX) {
-            const newSpeed = Math.min(curSpeed + ACCEL_AMOUNT, SPEED_MAX);
-            const scale = newSpeed / curSpeed;
-            ball.vx *= scale;
-            ball.vy *= scale;
+          const cur = Math.hypot(ball.vx, ball.vy);
+          if (cur < SPEED_MAX) {
+            const s = Math.min(cur + ACCEL_AMOUNT, SPEED_MAX) / cur;
+            ball.vx *= s; ball.vy *= s;
           }
         }
 
-        // 모든 벽돌 제거 → 다음 레벨
+        // 레벨 클리어
         if (bricks.every(b => !b.alive)) {
           gameState = 'cleared';
           sfxLevelClear();
-          drawFrame();
           messageEl.textContent = isTouch()
-            ? `레벨 ${level} 클리어! 🎉  탭해서 다음 레벨`
+            ? `레벨 ${level} 클리어! 🎉  탭하여 다음 레벨`
             : `레벨 ${level} 클리어! 🎉  스페이스바로 다음 레벨`;
           startBtn.textContent = '다음 레벨';
-          startBtn.onclick = nextLevelBtn;
-          document.onkeydown_next = true;
+          syncDragThumb();
+          drawFrame();
           return;
         }
       }
 
-      // 파티클 업데이트
+      // 파티클
       particles = particles.filter(p => p.alpha > 0.02);
       for (const p of particles) {
-        p.x += p.vx;
-        p.y += p.vy;
-        p.vy += 0.1;
-        p.alpha -= 0.03;
+        p.x += p.vx; p.y += p.vy; p.vy += 0.1; p.alpha -= 0.03;
       }
 
+      syncDragThumb();
       drawFrame();
       requestAnimationFrame(loop);
     }
 
-    function nextLevelBtn() {
-      nextLevel();
-      startBtn.onclick = () => {
-        if (gameState === 'playing') { if (ball.attached) ball.attached = false; }
-        else startGame();
-      };
-    }
-
-    // 스페이스바 → 다음 레벨 처리
-    document.addEventListener('keydown', e => {
-      if (e.code === 'Space' && gameState === 'cleared') {
-        nextLevel();
-        startBtn.textContent = '공 발사';
-      }
-    });
-
-    // ── 그리기 ────────────────────────────────────────────
+    /* ════════════════════════════════════════════════════
+       그리기
+    ════════════════════════════════════════════════════ */
     function drawFrame() {
       ctx.clearRect(0, 0, W, H);
 
-      // 배경 격자(미세한 느낌)
+      // 배경 격자
       ctx.strokeStyle = 'rgba(255,255,255,0.03)';
       ctx.lineWidth = 1;
-      for (let x = 0; x < W; x += 30) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
-      for (let y = 0; y < H; y += 30) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+      for (let x = 0; x < W; x += 30) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+      for (let y = 0; y < H; y += 30) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
 
       // 벽돌
       for (const b of bricks) {
         if (!b.alive) continue;
         const ratio = b.hp / b.maxHp;
-
-        // 그라데이션 벽돌
-        const grad = ctx.createLinearGradient(b.x, b.y, b.x, b.y + b.h);
-        grad.addColorStop(0, b.color);
-        grad.addColorStop(1, b.darkColor);
-        ctx.fillStyle = grad;
-        roundRect(ctx, b.x, b.y, b.w, b.h, 4);
-        ctx.fill();
-
-        // HP 진행 바
+        const g = ctx.createLinearGradient(b.x, b.y, b.x, b.y+b.h);
+        g.addColorStop(0, b.color); g.addColorStop(1, b.darkColor);
+        ctx.fillStyle = g;
+        roundRect(b.x, b.y, b.w, b.h, 4); ctx.fill();
         if (b.maxHp > 1) {
           ctx.fillStyle = 'rgba(0,0,0,0.3)';
-          roundRect(ctx, b.x + 2, b.y + b.h - 5, b.w - 4, 3, 2);
-          ctx.fill();
+          roundRect(b.x+2, b.y+b.h-5, b.w-4, 3, 2); ctx.fill();
           ctx.fillStyle = 'rgba(255,255,255,0.7)';
-          roundRect(ctx, b.x + 2, b.y + b.h - 5, (b.w - 4) * ratio, 3, 2);
-          ctx.fill();
+          roundRect(b.x+2, b.y+b.h-5, (b.w-4)*ratio, 3, 2); ctx.fill();
         }
-
-        // 하이라이트
         ctx.fillStyle = 'rgba(255,255,255,0.2)';
-        roundRect(ctx, b.x + 3, b.y + 2, b.w - 6, 4, 2);
-        ctx.fill();
+        roundRect(b.x+3, b.y+2, b.w-6, 4, 2); ctx.fill();
       }
 
       // 파티클
       for (const p of particles) {
-        ctx.globalAlpha = p.alpha;
-        ctx.fillStyle = p.color;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.globalAlpha = p.alpha; ctx.fillStyle = p.color;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
       }
       ctx.globalAlpha = 1;
 
       // 패들
-      const pGrad = ctx.createLinearGradient(paddle.x, paddle.y, paddle.x, paddle.y + paddle.h);
-      pGrad.addColorStop(0, '#a78bfa');
-      pGrad.addColorStop(1, '#7c3aed');
-      ctx.fillStyle = pGrad;
-      roundRect(ctx, paddle.x, paddle.y, paddle.w, paddle.h, 6);
-      ctx.fill();
+      const pg = ctx.createLinearGradient(paddle.x, paddle.y, paddle.x, paddle.y+paddle.h);
+      pg.addColorStop(0, '#a78bfa'); pg.addColorStop(1, '#7c3aed');
+      ctx.fillStyle = pg;
+      roundRect(paddle.x, paddle.y, paddle.w, paddle.h, 6); ctx.fill();
       ctx.fillStyle = 'rgba(255,255,255,0.3)';
-      roundRect(ctx, paddle.x + 4, paddle.y + 2, paddle.w - 8, 3, 2);
-      ctx.fill();
+      roundRect(paddle.x+4, paddle.y+2, paddle.w-8, 3, 2); ctx.fill();
 
       // 공
-      const ballGrad = ctx.createRadialGradient(ball.x - 2, ball.y - 2, 1, ball.x, ball.y, ball.r);
-      ballGrad.addColorStop(0, '#ffffff');
-      ballGrad.addColorStop(0.5, '#e0d7ff');
-      ballGrad.addColorStop(1, '#a78bfa');
-      ctx.fillStyle = ballGrad;
-      ctx.shadowColor = '#a78bfa';
-      ctx.shadowBlur = 16;
-      ctx.beginPath();
-      ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
-      ctx.fill();
+      const bg = ctx.createRadialGradient(ball.x-2, ball.y-2, 1, ball.x, ball.y, ball.r);
+      bg.addColorStop(0, '#fff'); bg.addColorStop(0.5, '#e0d7ff'); bg.addColorStop(1, '#a78bfa');
+      ctx.fillStyle = bg;
+      ctx.shadowColor = '#a78bfa'; ctx.shadowBlur = 16;
+      ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2); ctx.fill();
       ctx.shadowBlur = 0;
 
-      // 게임 오버 / 클리어 오버레이
+      // 오버레이
       if (gameState === 'gameover') {
-        ctx.fillStyle = 'rgba(0,0,0,0.6)';
-        ctx.fillRect(0, 0, W, H);
-        ctx.fillStyle = '#ff6b6b';
-        ctx.font = 'bold 48px Segoe UI';
+        ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0,0,W,H);
         ctx.textAlign = 'center';
-        ctx.fillText('GAME OVER', W / 2, H / 2 - 20);
-        ctx.fillStyle = '#fff';
-        ctx.font = '22px Segoe UI';
-        ctx.fillText(`점수: ${score}`, W / 2, H / 2 + 22);
+        ctx.fillStyle = '#ff6b6b'; ctx.font = 'bold 48px Segoe UI';
+        ctx.fillText('GAME OVER', W/2, H/2-20);
+        ctx.fillStyle = '#fff'; ctx.font = '22px Segoe UI';
+        ctx.fillText(`점수: ${score}`, W/2, H/2+22);
         ctx.textAlign = 'left';
       }
-
       if (gameState === 'cleared') {
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillRect(0, 0, W, H);
-        ctx.fillStyle = '#a78bfa';
-        ctx.font = 'bold 42px Segoe UI';
+        ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0,0,W,H);
         ctx.textAlign = 'center';
-        ctx.fillText('LEVEL CLEAR!', W / 2, H / 2 - 20);
-        ctx.fillStyle = '#fff';
-        ctx.font = '20px Segoe UI';
-        ctx.fillText(`점수: ${score}`, W / 2, H / 2 + 22);
+        ctx.fillStyle = '#a78bfa'; ctx.font = 'bold 42px Segoe UI';
+        ctx.fillText('LEVEL CLEAR!', W/2, H/2-20);
+        ctx.fillStyle = '#fff'; ctx.font = '20px Segoe UI';
+        ctx.fillText(`점수: ${score}`, W/2, H/2+22);
         ctx.textAlign = 'left';
       }
     }
 
-    function roundRect(ctx, x, y, w, h, r) {
+    function roundRect(x, y, w, h, r) {
       ctx.beginPath();
-      ctx.moveTo(x + r, y);
-      ctx.lineTo(x + w - r, y);
-      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-      ctx.lineTo(x + w, y + h - r);
-      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-      ctx.lineTo(x + r, y + h);
-      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-      ctx.lineTo(x, y + r);
-      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.moveTo(x+r, y); ctx.lineTo(x+w-r, y); ctx.quadraticCurveTo(x+w, y,   x+w, y+r);
+      ctx.lineTo(x+w, y+h-r);                    ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+      ctx.lineTo(x+r, y+h);                      ctx.quadraticCurveTo(x,   y+h, x,     y+h-r);
+      ctx.lineTo(x, y+r);                         ctx.quadraticCurveTo(x,   y,   x+r,   y);
       ctx.closePath();
     }
 
-    // 초기 화면 그리기
+    /* ════════════════════════════════════════════════════
+       초기화
+    ════════════════════════════════════════════════════ */
     buildBricks();
     resetBall();
+    syncDragThumb();
     drawFrame();
   </script>
 </body>
