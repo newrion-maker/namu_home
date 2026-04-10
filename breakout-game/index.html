@@ -237,7 +237,7 @@ const ITEM_DEFS = {
   wide:  { emoji:'➕', color:'#54a0ff', label:'넓은 패들',  duration: 900 },
   multi: { emoji:'⚡', color:'#ffd32a', label:'멀티볼',    duration:   0 },
   slow:  { emoji:'🐢', color:'#00cec9', label:'느린 공',   duration: 480 },
-  bomb:  { emoji:'💣', color:'#a29bfe', label:'폭탄',      duration:   0 },
+  steel: { emoji:'🔩', color:'#b2bec3', label:'쇠구슬',    duration: 600 },
 };
 const ITEM_KEYS = Object.keys(ITEM_DEFS);
 
@@ -314,9 +314,10 @@ const sfxItemCatch  = () => {
   playTone({ type:'triangle', freq:440, freqEnd:660,  duration:0.22, gain:0.12 });
 };
 const sfxBulletFire = () => playTone({ type:'square', freq:700, freqEnd:900, duration:0.05, gain:0.06 });
-const sfxBombExplode = () => {
-  playNoise({ duration:0.45, gain:0.5, ffreq:180 });
-  playTone({ type:'sawtooth', freq:180, freqEnd:50, duration:0.45, gain:0.3 });
+// 쇠구슬이 벽돌을 관통할 때 — 둔탁한 금속음
+const sfxSteelHit = () => {
+  playNoise({ duration:0.07, gain:0.28, ffreq:550 });
+  playTone({ type:'triangle', freq:230, freqEnd:170, duration:0.09, gain:0.22 });
 };
 
 /* ═══════════════════════════════════════════════════════
@@ -326,14 +327,14 @@ let score=0, lives=3, level=1, gameState='idle', accelTimer=0;
 
 // 아이템 효과 상태
 const effects = {
-  gun:  { active:false, timer:0 },
-  wide: { active:false, timer:0 },
-  slow: { active:false, timer:0 },
+  gun:   { active:false, timer:0 },
+  wide:  { active:false, timer:0 },
+  slow:  { active:false, timer:0 },
+  steel: { active:false, timer:0 },  // 쇠구슬 — 벽돌 관통
 };
 let fallingItems = [];   // 떨어지는 아이템
 let bullets      = [];   // 총알
 let gunFireTimer = 0;
-let bombFlash    = 0;    // 폭탄 플래시 남은 프레임
 
 /* ═══════════════════════════════════════════════════════
    패들
@@ -476,38 +477,11 @@ function applyItem(type, catchX) {
       effects.slow.timer  = ITEM_DEFS.slow.duration;
       break;
 
-    case 'bomb':
-      explodeBomb(catchX);
+    case 'steel':
+      effects.steel.active = true;
+      effects.steel.timer  = ITEM_DEFS.steel.duration;
       break;
   }
-}
-
-/* ═══════════════════════════════════════════════════════
-   폭탄 폭발
-═══════════════════════════════════════════════════════ */
-function explodeBomb(cx) {
-  const alive = bricks.filter(b => b.alive);
-  if (!alive.length) return;
-
-  // 폭탄 X 에서 가장 가까운 살아있는 블록을 중심으로
-  alive.sort((a,b) => Math.abs(a.x+a.w/2-cx) - Math.abs(b.x+b.w/2-cx));
-  const pivot = alive[0];
-  const pcx   = pivot.x + pivot.w/2, pcy = pivot.y + pivot.h/2;
-
-  // 그 블록 주변 9개 (2D 거리 정렬)
-  alive.sort((a,b) =>
-    Math.hypot(a.x+a.w/2-pcx, a.y+a.h/2-pcy) -
-    Math.hypot(b.x+b.w/2-pcx, b.y+b.h/2-pcy));
-
-  alive.slice(0, 9).forEach(b => {
-    b.alive = false; b.hp = 0;
-    score += b.maxHp * 10 * level;
-    spawnParticles(b.x+b.w/2, b.y+b.h/2, b.color, 8);
-    spawnParticles(b.x+b.w/2, b.y+b.h/2, '#ff7f50', 5);
-  });
-  scoreEl.textContent = score;
-  sfxBombExplode();
-  bombFlash = 7;
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -578,14 +552,19 @@ function updateEffects() {
       balls.forEach(b => { if (!b.attached) { b.vx*=2; b.vy*=2; } });
     }
   }
+  if (effects.steel.active) {
+    if (--effects.steel.timer <= 0) { effects.steel.active=false; }
+  }
 }
 
 function resetEffects() {
   if (effects.wide.active) paddle.w = PADDLE_NORMAL_W;
-  effects.gun  = { active:false, timer:0 };
-  effects.wide = { active:false, timer:0 };
-  effects.slow = { active:false, timer:0 };
-  fallingItems=[]; bullets=[]; gunFireTimer=0; bombFlash=0;
+  if (effects.slow.active) balls.forEach(b => { if (!b.attached) { b.vx*=2; b.vy*=2; } });
+  effects.gun   = { active:false, timer:0 };
+  effects.wide  = { active:false, timer:0 };
+  effects.slow  = { active:false, timer:0 };
+  effects.steel = { active:false, timer:0 };
+  fallingItems=[]; bullets=[]; gunFireTimer=0;
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -773,8 +752,13 @@ function loop() {
     for (const br of bricks) {
       if (!br.alive) continue;
       if (!circleRect(b.x,b.y,b.r,br.x,br.y,br.w,br.h)) continue;
-      if (!brickHit) { resolveRectBounce(b,br.x,br.y,br.w,br.h); brickHit=true; }
+      if (!brickHit && !effects.steel.active) {
+        // 일반 공: 첫 충돌 블록에서 반사
+        resolveRectBounce(b,br.x,br.y,br.w,br.h); brickHit=true;
+      }
+      // 쇠구슬: 반사 없이 모든 겹치는 블록 관통 파괴
       damageBrick(br);
+      if (effects.steel.active) sfxSteelHit();
     }
 
     // 낙사
@@ -819,8 +803,6 @@ function loop() {
   particles=particles.filter(p=>p.alpha>0.02);
   for (const p of particles) { p.x+=p.vx; p.y+=p.vy; p.vy+=0.1; p.alpha-=0.03; }
 
-  if (bombFlash>0) bombFlash--;
-
   syncDragThumb();
   drawFrame();
   requestAnimationFrame(loop);
@@ -832,9 +814,10 @@ function loop() {
 function drawFrame() {
   ctx.clearRect(0,0,W,H);
 
-  // 폭탄 플래시
-  if (bombFlash>0) {
-    ctx.fillStyle=`rgba(255,120,40,${(bombFlash/7)*0.45})`;
+  // 쇠구슬 활성 시 필드 전체에 은은한 금속 색조
+  if (effects.steel.active) {
+    const ratio = effects.steel.timer / ITEM_DEFS.steel.duration;
+    ctx.fillStyle = `rgba(180,200,220,${0.06 * ratio})`;
     ctx.fillRect(0,0,W,H);
   }
 
@@ -895,10 +878,20 @@ function drawFrame() {
   // 공들
   for (const b of balls) {
     const bg=ctx.createRadialGradient(b.x-2,b.y-2,1,b.x,b.y,b.r);
-    bg.addColorStop(0,'#fff'); bg.addColorStop(0.5,'#e0d7ff'); bg.addColorStop(1,'#a78bfa');
-    ctx.fillStyle=bg;
-    ctx.shadowColor='#a78bfa'; ctx.shadowBlur=16;
+    if (effects.steel.active) {
+      bg.addColorStop(0,'#ffffff'); bg.addColorStop(0.3,'#d0d8e0'); bg.addColorStop(0.7,'#8899aa'); bg.addColorStop(1,'#445566');
+      ctx.fillStyle=bg;
+      ctx.shadowColor='#aaccdd'; ctx.shadowBlur=20;
+    } else {
+      bg.addColorStop(0,'#fff'); bg.addColorStop(0.5,'#e0d7ff'); bg.addColorStop(1,'#a78bfa');
+      ctx.fillStyle=bg;
+      ctx.shadowColor='#a78bfa'; ctx.shadowBlur=16;
+    }
     ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fill();
+    if (effects.steel.active) {
+      ctx.strokeStyle='rgba(255,255,255,0.6)'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.arc(b.x-b.r*0.3,b.y-b.r*0.3,b.r*0.25,0,Math.PI*2); ctx.stroke();
+    }
     ctx.shadowBlur=0;
   }
 
