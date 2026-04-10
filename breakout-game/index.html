@@ -21,26 +21,31 @@
       justify-content: center;
       font-family: 'Segoe UI', sans-serif;
       color: #fff;
+      /* 모바일: 가로 스크롤 방지, 세로 여백 */
+      overflow-x: hidden;
+      padding: 10px 8px;
     }
 
     h1 {
-      font-size: 2rem;
-      margin-bottom: 16px;
+      font-size: clamp(1.2rem, 5vw, 2rem);
+      margin-bottom: 10px;
       letter-spacing: 3px;
       text-shadow: 0 0 20px #a78bfa, 0 0 40px #7c3aed;
     }
 
     #scoreboard {
       display: flex;
-      gap: 48px;
-      margin-bottom: 14px;
-      font-size: 1.1rem;
+      gap: clamp(10px, 4vw, 48px);
+      margin-bottom: 10px;
+      font-size: clamp(0.78rem, 3vw, 1.1rem);
       font-weight: 600;
+      flex-wrap: wrap;
+      justify-content: center;
     }
 
     #scoreboard span {
       background: rgba(255,255,255,0.08);
-      padding: 6px 20px;
+      padding: 5px 14px;
       border-radius: 20px;
       border: 1px solid rgba(255,255,255,0.15);
     }
@@ -55,20 +60,27 @@
       box-shadow: 0 0 40px rgba(124,58,237,0.5), 0 0 80px rgba(124,58,237,0.2);
       display: block;
       background: #0d0d1a;
+      /* 핵심: 화면 너비에 맞게 축소, 비율 유지 */
+      width: min(600px, calc(100vw - 16px));
+      height: auto;
+      /* 터치 스크롤/줌 방지 */
+      touch-action: none;
     }
 
     #message {
-      margin-top: 16px;
-      font-size: 1rem;
+      margin-top: 10px;
+      font-size: clamp(0.78rem, 3vw, 1rem);
       color: #c4b5fd;
-      min-height: 24px;
+      min-height: 20px;
       letter-spacing: 1px;
+      text-align: center;
+      padding: 0 8px;
     }
 
     #startBtn {
-      margin-top: 14px;
-      padding: 12px 36px;
-      font-size: 1rem;
+      margin-top: 10px;
+      padding: 11px 32px;
+      font-size: clamp(0.88rem, 3.5vw, 1rem);
       font-weight: 700;
       letter-spacing: 2px;
       border: none;
@@ -78,6 +90,7 @@
       cursor: pointer;
       box-shadow: 0 0 20px rgba(124,58,237,0.6);
       transition: transform 0.1s, box-shadow 0.2s;
+      -webkit-tap-highlight-color: transparent;
     }
 
     #startBtn:hover {
@@ -90,23 +103,28 @@
     }
 
     #controls {
-      margin-top: 14px;
+      margin-top: 10px;
       font-size: 0.82rem;
       color: rgba(255,255,255,0.4);
       text-align: center;
       line-height: 1.7;
     }
 
+    /* 터치 기기(모바일)에서 키보드 안내 숨기기 */
+    @media (pointer: coarse) {
+      #controls { display: none; }
+    }
+
     #muteBtn {
       position: fixed;
-      top: 16px;
-      right: 20px;
+      top: 12px;
+      right: 12px;
       background: rgba(255,255,255,0.08);
       border: 1px solid rgba(255,255,255,0.18);
       border-radius: 50%;
-      width: 42px;
-      height: 42px;
-      font-size: 1.2rem;
+      width: 40px;
+      height: 40px;
+      font-size: 1.1rem;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -114,6 +132,7 @@
       transition: background 0.2s, transform 0.1s;
       color: #fff;
       z-index: 100;
+      -webkit-tap-highlight-color: transparent;
     }
     #muteBtn:hover { background: rgba(255,255,255,0.18); transform: scale(1.1); }
     #muteBtn.muted { color: rgba(255,255,255,0.35); }
@@ -130,7 +149,7 @@
 
   <canvas id="gameCanvas" width="600" height="450"></canvas>
 
-  <div id="message">스페이스바 또는 버튼을 눌러 시작하세요!</div>
+  <div id="message">버튼을 눌러 시작하세요!</div>
   <button id="startBtn">게임 시작</button>
   <div id="controls">
     좌우 방향키 또는 마우스로 패들 이동 &nbsp;|&nbsp; 스페이스바로 시작/일시정지
@@ -381,21 +400,43 @@
     });
     document.addEventListener('keyup', e => { keys[e.code] = false; });
 
+    // CSS 스케일 보정 계수 (캔버스 내부 해상도 ÷ 화면 표시 크기)
+    function canvasScaleX() {
+      return canvas.width / canvas.getBoundingClientRect().width;
+    }
+
     // 마우스로 패들 이동
     canvas.addEventListener('mousemove', e => {
       const rect = canvas.getBoundingClientRect();
-      const mx = e.clientX - rect.left;
+      const mx = (e.clientX - rect.left) * canvasScaleX();
       paddle.x = mx - paddle.w / 2;
       clampPaddle();
     });
 
-    // 터치 지원
+    // 터치: 패들 이동
     canvas.addEventListener('touchmove', e => {
       e.preventDefault();
       const rect = canvas.getBoundingClientRect();
-      const tx = e.touches[0].clientX - rect.left;
+      const tx = (e.touches[0].clientX - rect.left) * canvasScaleX();
       paddle.x = tx - paddle.w / 2;
       clampPaddle();
+    }, { passive: false });
+
+    // 터치: 탭으로 공 발사 / 게임 시작
+    canvas.addEventListener('touchstart', e => {
+      e.preventDefault();
+      if (gameState === 'idle' || gameState === 'gameover') {
+        startGame();
+      } else if (gameState === 'cleared') {
+        nextLevelBtn();
+        startBtn.textContent = '공 발사';
+      } else if (gameState === 'playing' && ball.attached) {
+        ball.attached = false;
+      } else if (gameState === 'paused') {
+        gameState = 'playing';
+        messageEl.textContent = '';
+        requestAnimationFrame(loop);
+      }
     }, { passive: false });
 
     function clampPaddle() {
@@ -412,6 +453,8 @@
     });
 
     // ── 게임 시작 / 초기화 ────────────────────────────────
+    const isTouch = () => window.matchMedia('(pointer: coarse)').matches;
+
     function startGame() {
       score = 0;
       lives = 3;
@@ -423,7 +466,9 @@
       paddle.x = (W - paddle.w) / 2;
       resetBall();
       gameState = 'playing';
-      messageEl.textContent = '스페이스바 또는 클릭으로 공을 발사!';
+      messageEl.textContent = isTouch()
+        ? '화면을 탭해서 공을 발사!'
+        : '스페이스바 또는 클릭으로 공을 발사!';
       startBtn.textContent = '공 발사';
       requestAnimationFrame(loop);
     }
@@ -536,7 +581,9 @@
           accelTimer = 0;
           sfxLifeLost();
           resetBall(nextSpeed);
-          messageEl.textContent = '목숨 -1! 스페이스바로 다시 발사';
+          messageEl.textContent = isTouch()
+            ? '목숨 -1! 화면을 탭해서 다시 발사'
+            : '목숨 -1! 스페이스바로 다시 발사';
         }
 
         // 벽돌 충돌
@@ -579,7 +626,9 @@
           gameState = 'cleared';
           sfxLevelClear();
           drawFrame();
-          messageEl.textContent = `레벨 ${level} 클리어! 🎉  스페이스바로 다음 레벨`;
+          messageEl.textContent = isTouch()
+            ? `레벨 ${level} 클리어! 🎉  탭해서 다음 레벨`
+            : `레벨 ${level} 클리어! 🎉  스페이스바로 다음 레벨`;
           startBtn.textContent = '다음 레벨';
           startBtn.onclick = nextLevelBtn;
           document.onkeydown_next = true;
