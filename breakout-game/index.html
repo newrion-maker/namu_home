@@ -373,13 +373,15 @@ function buildBricks() {
   bricks = [];
   for (let r=0; r<BRICK_ROWS; r++)
     for (let c=0; c<BRICK_COLS; c++) {
-      // 기본 1번, 20% 확률로 2번짜리 특수 블록
-      const hp = Math.random() < 0.20 ? 2 : 1;
+      // 기본 1번, 20% 확률로 2번짜리 회색 특수 블록
+      const hp        = Math.random() < 0.20 ? 2 : 1;
+      const color     = hp === 2 ? '#9eafc2' : ROW_COLORS[r][0];
+      const darkColor = hp === 2 ? '#4a5568' : ROW_COLORS[r][1];
       bricks.push({
         x: BRICK_LEFT + c*(BRICK_W+BRICK_PAD),
         y: BRICK_TOP  + r*(BRICK_H+BRICK_PAD),
         w: BRICK_W, h: BRICK_H, hp, maxHp:hp,
-        color: ROW_COLORS[r][0], darkColor: ROW_COLORS[r][1], alive:true,
+        color, darkColor, alive:true,
       });
     }
 }
@@ -868,14 +870,6 @@ function drawFrame() {
       // 하이라이트
       ctx.fillStyle = 'rgba(255,255,255,0.2)';
       roundRect(b.x+3, b.y+2, b.w-6, 4, 2); ctx.fill();
-
-      // 특수 블록(미손상) 구분 테두리
-      if (b.maxHp === 2) {
-        ctx.strokeStyle = 'rgba(255,255,255,0.45)';
-        ctx.lineWidth = 1.5;
-        roundRect(b.x+1, b.y+1, b.w-2, b.h-2, 3); ctx.stroke();
-        ctx.lineWidth = 1;
-      }
     }
   }
 
